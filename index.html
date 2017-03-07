@@ -38,6 +38,17 @@
             padding: 15px;
             text-align:center;
         }
+
+        .map-control {
+            min-width: 100px;
+            font-size: 120%;
+            font-weight: bold;
+            background-color: white;
+            border-radius: 4px;
+            border-color: rgb(204, 204, 204);
+            border-style: solid;
+            padding: 10px;
+        }
     </style>
 </head>
 <body>
@@ -69,6 +80,14 @@
         }
     }
 
+    function Control(label, position, clickHandler) {
+        return {
+            label: label,
+            position: position,
+            clickHandler: clickHandler
+        }
+    }
+
     var map, locationMarker, locationAccuracyCircle;
 
     // setup base map
@@ -78,6 +97,15 @@
         maxZoom: 18
     }).addTo(map);
     L.control.scale().addTo(map);
+
+    var controls = [
+        Control(
+            'Legend',
+            'topright'),
+        Control(
+            'Filters',
+            'topright')
+    ];
 
     var facilities = [
         Facility(
@@ -152,6 +180,24 @@
     }
     map.on('locationfound', onLocationFound);
     map.locate({setView: true, maxZoom: 16});
+
+    // setup controls
+    for (var i=0; i<controls.length; i++) {
+        (function() {
+            var control = controls[i];
+            var Control = L.Control.extend({
+                onAdd: function(map) {
+                    var leafletControl = L.DomUtil.create('button');
+                    leafletControl.type = 'button';
+                    leafletControl.className = 'map-control';
+                    leafletControl.appendChild(document.createTextNode(control.label));
+                    leafletControl.onclick = control.clickHandler || function() { alert(control.label); };
+                    return leafletControl;
+                }
+            });
+            (new Control({ position: control.position })).addTo(map);
+        })();
+    }
 
 </script>
 </body>
