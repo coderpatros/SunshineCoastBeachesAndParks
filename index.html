@@ -8,8 +8,12 @@
     <script src="https://unpkg.com/esri-leaflet@2.0.7"></script>
     <link href="https://fonts.googleapis.com/css?family=Montserrat:400,700" rel="stylesheet" type="text/css">
     <style>
-        body {
+        body, button {
             font-family: 'Montserrat', sans-serif;
+            font-size: 13pt;
+        }
+
+        body {
             margin:0;
             padding:0;
         }
@@ -19,7 +23,7 @@
             width: 100vw;
         }
 
-        #disclaimer {
+        .dialog {
             visibility: hidden;
             position: absolute;
             left: 0;
@@ -30,8 +34,9 @@
             z-index: 1000;
             background-color: rgba(0, 0, 0, 0.75);
         }
-        #disclaimer div {
+        .dialog div {
             width: 90%;
+            max-width: 500px;
             margin: 50px auto;
             background-color: #fff;
             border: 1px solid #000;
@@ -49,27 +54,52 @@
             border-style: solid;
             padding: 10px;
         }
+
+        #legendItemContainer {
+            list-style: none;
+            padding: 0;
+            max-width: 300px;
+            display: inline-block;
+        }
+
+        #legendItemContainer li {
+            text-align: left;
+            padding-bottom: 5px;
+        }
+
+        #legendItemContainer img {
+            margin-right: 10px;
+            vertical-align: middle;
+        }
     </style>
 </head>
 <body>
 <div id="map"></div>
-<div id="disclaimer">
+<div id="disclaimer" class="dialog" style="visibility: visible">
     <div>
         <strong>Sunshine Coast Facilities</strong>
         <p>This is an interactive map with options for displaying points of interest around the Sunshine Coast.</p>
-        <p>Information displayed on the map may be incomplete or outdated.</p>
-        <p>All data is provided by Sunshine Coast Council.</p>
-        <p><a href="https://data.sunshinecoast.qld.gov.au" target="_blank">Sunshine Coast Council Open Data Portal</a></p>
-        <p><button type="button" onclick='disclaimerToggle()'>Continue</button></p>
+        <p>Displayed information may incomplete or incorrect.</p>
+        <p>All data is provided by <a href="https://www.sunshinecoast.qld.gov.au" target="_blank">Sunshine Coast Council</a>.</p>
+        <p>Find even more data on the <a href="https://data.sunshinecoast.qld.gov.au" target="_blank">Sunshine Coast Council Open Data Portal</a></p>
+        <p><button type="button" onclick='dismissDialog("disclaimer")'>Continue</button></p>
+    </div>
+</div>
+<div id="legend" class="dialog">
+    <div>
+        <strong>Legend</strong><br>
+        <ul id="legendItemContainer"></ul>
+        <p><button type="button" onclick='dismissDialog("legend")'>Close</button></p>
     </div>
 </div>
 <script>
-    // Used to display/hide the disclaimer popup
-    function disclaimerToggle() {
-        var disclaimer = document.getElementById('disclaimer');
-        disclaimer.style.visibility = (disclaimer.style.visibility == "visible") ? "hidden" : "visible";
+    function dismissDialog(dialogId) {
+        document.getElementById(dialogId).style.visibility = 'hidden';
     }
-    disclaimerToggle();
+
+    function displayDialog(dialogId) {
+        document.getElementById(dialogId).style.visibility = 'visible';
+    }
 
     function Facility(label, url, iconUrl, where) {
         return {
@@ -101,10 +131,8 @@
     var controls = [
         Control(
             'Legend',
-            'topright'),
-        Control(
-            'Filters',
-            'topright')
+            'topright',
+            function() { displayDialog('legend'); })
     ];
 
     var facilities = [
@@ -139,11 +167,21 @@
             "WiFiType<>'Paid WiFi'")
     ];
 
-    // setup facility layers
+    // setup legend items and facility layers
+    var legendItemContainer = document.getElementById('legendItemContainer');
     var facilityLayers = [];
     for (var i=0; i<facilities.length; i++) {
         (function() {
             var facility = facilities[i];
+
+            var legendItem = document.createElement('li');
+            var legendImage = document.createElement('img');
+            legendImage.src = facility.iconUrl;
+            legendItem.appendChild(legendImage);
+            var legendText = document.createTextNode(facility.label);
+            legendItem.appendChild(legendText);
+            legendItemContainer.appendChild(legendItem);
+
             var layer = L.esri.featureLayer({
                 url:  facility.url,
                 pointToLayer: function(geojson, latlng) {
