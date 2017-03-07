@@ -1,0 +1,158 @@
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Sunshine Coast Facilities</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.0.3/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.0.3/dist/leaflet-src.js"></script>
+    <script src="https://unpkg.com/esri-leaflet@2.0.7"></script>
+    <link href="https://fonts.googleapis.com/css?family=Montserrat:400,700" rel="stylesheet" type="text/css">
+    <style>
+        body {
+            font-family: 'Montserrat', sans-serif;
+            margin:0;
+            padding:0;
+        }
+
+        html, body, #map {
+            height: 100vh;
+            width: 100vw;
+        }
+
+        #disclaimer {
+            visibility: hidden;
+            position: absolute;
+            left: 0;
+            top: 0;
+            width:100%;
+            height:100%;
+            text-align:center;
+            z-index: 1000;
+            background-color: rgba(0, 0, 0, 0.75);
+        }
+        #disclaimer div {
+            width: 90%;
+            margin: 50px auto;
+            background-color: #fff;
+            border: 1px solid #000;
+            padding: 15px;
+            text-align:center;
+        }
+    </style>
+</head>
+<body>
+<div id="map"></div>
+<div id="disclaimer">
+    <div>
+        <strong>Sunshine Coast Facilities</strong>
+        <p>This is an interactive map with options for displaying points of interest around the Sunshine Coast.</p>
+        <p>Information displayed on the map may be incomplete or outdated.</p>
+        <p>All data is provided by Sunshine Coast Council.</p>
+        <p><a href="https://data.sunshinecoast.qld.gov.au" target="_blank">Sunshine Coast Council Open Data Portal</a></p>
+        <p><button type="button" onclick='disclaimerToggle()'>Continue</button></p>
+    </div>
+</div>
+<script>
+    // Used to display/hide the disclaimer popup
+    function disclaimerToggle() {
+        var disclaimer = document.getElementById('disclaimer');
+        disclaimer.style.visibility = (disclaimer.style.visibility == "visible") ? "hidden" : "visible";
+    }
+    disclaimerToggle();
+
+    function Facility(label, url, iconUrl, where) {
+        return {
+            label: label,
+            url: url,
+            iconUrl: iconUrl,
+            where: where
+        }
+    }
+
+    var map, locationMarker, locationAccuracyCircle;
+
+    // setup base map
+    map = L.map('map').setView([ -26.653127, 153.067969 ], 11);
+    L.tileLayer('https://api.mapbox.com/styles/v1/mapbox/streets-v10/tiles/256/{z}/{x}/{y}?access_token=pk.eyJ1IjoicGF0cm9zIiwiYSI6ImNpenNjcjk4cTAwenIycXBjdjVnbHFwdzUifQ.fk6Q_TamIFNjQDFZ5AZVNA', {
+        attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="http://mapbox.com">Mapbox</a>',
+        maxZoom: 18
+    }).addTo(map);
+    L.control.scale().addTo(map);
+
+    var facilities = [
+        Facility(
+            'BBQ',
+            'https://gisservices.scc.qld.gov.au/arcgis/rest/services/Structure/Structure_SCRC/MapServer/0',
+            'markers/bbq.png'),
+        Facility(
+            'Playground',
+            'https://gisservices.scc.qld.gov.au/arcgis/rest/services/Society/Society_SCRC/MapServer/42',
+            'markers/playground.png'),
+        Facility(
+            'Playground with liberty swing',
+            'https://gisservices.scc.qld.gov.au/arcgis/rest/services/Society/Society_SCRC/MapServer/43',
+            'markers/playground-liberty-swing.png'),
+        Facility(
+            'Patrolled beach',
+            'https://gisservices.scc.qld.gov.au/arcgis/rest/services/Society/Society_SCRC/MapServer/6',
+            'markers/patrolled-beach.png'),
+        Facility(
+            'Beach access',
+            'https://gisservices.scc.qld.gov.au/arcgis/rest/services/Society/Society_SCRC/MapServer/5',
+            'markers/beach-access.png'),
+        Facility(
+            'Public toilet',
+            'https://gisservices.scc.qld.gov.au/arcgis/rest/services/Society/Society_SCRC/MapServer/46',
+            'markers/toilet.png'),
+        Facility(
+            'Wifi hotspots',
+            'https://gisservices.scc.qld.gov.au/arcgis/rest/services/UtilitiesCommunication/Utilities_SCRC/MapServer/0',
+            'markers/wifi.png',
+            "WiFiType<>'Paid WiFi'")
+    ];
+
+    // setup facility layers
+    var facilityLayers = [];
+    for (var i=0; i<facilities.length; i++) {
+        (function() {
+            var facility = facilities[i];
+            var layer = L.esri.featureLayer({
+                url:  facility.url,
+                pointToLayer: function(geojson, latlng) {
+                    return L.marker(latlng, {
+                        icon: L.icon({
+                            iconUrl: facility.iconUrl,
+                            iconSize: [32, 37],
+                            iconAnchor: [16, 37],
+                            popupAnchor: [0, -11]
+                        })
+                    });
+                }
+            }).addTo(map);
+            if (facility.where) layer.setWhere(facility.where);
+            facilityLayers.push(layer);
+        })();
+    }
+
+    // setup device location handling
+    function onLocationFound(e) {
+        var radius = e.accuracy / 2;
+
+        if (locationMarker) {
+            locationMarker.setLatLng(e.latlng);
+        } else {
+            locationMarker = L.marker(e.latlng).addTo(map);
+        }
+
+        if (locationAccuracyCircle) {
+            locationAccuracyCircle.setLatLng(e.latlng).setRadius(radius);
+        } else {
+            locationAccuracyCircle = L.circle(e.latlng, radius).addTo(map);
+        }
+    }
+    map.on('locationfound', onLocationFound);
+    map.locate({setView: true, maxZoom: 16});
+
+</script>
+</body>
+</html>
