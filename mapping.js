@@ -105,8 +105,9 @@ for (var i=0; i<facilities.length; i++) {
                     })
                 });
             }
-        }).addTo(map);
+        });
         if (facility.where) layer.setWhere(facility.where);
+        layer.addTo(map);
         facilityLayers.push(layer);
     })();
 }
